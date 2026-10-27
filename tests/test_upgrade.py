@@ -1,7 +1,8 @@
-from upgrade import *
-from initialize import getpass
+import os
+from src.upgrade import copyFiletoFlash, ConnectHandler
+from netmiko import NetmikoAuthenticationException, NetmikoTimeoutException
 
-password = getpass()
+password = os.getenv("SWITCH_PASS")  ##Remove password for testing??
 
 def device():
     exampleDevice = {

@@ -5,16 +5,16 @@
 3. Install ndr extension (Copy file to extension partition, Install extension, Copy installed 
    extension to boot-extensions for boot persistance)) 
 '''
-from src.initialize import (
+from initialize import (
     enterPassword,
     HostnamesAndIPs,
     printDeviceList,
     getHTTPServerIP,
     installNDROption
 )
-from src.upgrade import(
+from upgrade import(
     concurrentExecutor,
-    copyEOStoFlash
+    copyFiletoFlash
 )
 
 def main():
@@ -51,11 +51,23 @@ def main():
     #Copy EOS file to flash
     print("COPYING EOS FILE FROM HTTP SERVER TO SWITCHES...")
     concurrentExecutor(
-        copyEOStoFlash,
+        copyFiletoFlash,
         deviceList,
-        EOS_VERSION=EOS_VERSION,
+        fileName=f"{EOS_VERSION}.swi",
         httpServerIP=httpServerIP,
     )
+
+    '''
+    concurrentExecutor(
+            copyFiletoFlash,
+            deviceList,
+            fileName=f"{EOS_VERSION}-NDRSensor.swix",
+            httpServerIP=httpServerIP,
+        )
+    '''
+
+
+
 
     #PLEASE CREATE PROPER TEST FUNCTIONS TO TEST FASTER 
     #AND TO TEST EACH NEW FUNCITON IN upgrade.py.

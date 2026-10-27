@@ -32,17 +32,35 @@ def copyFiletoFlash(fileName, httpServerIP, device):
     try:
         with ConnectHandler(**device) as connection:
             connection.enable()
-            output = connection.send_command(command, expect_string="Copy completed successfully.", read_timeout=300)
+            output = connection.send_command(command, expect_string="Copy completed successfully.", read_timeout=600)
+            if ("404 File not found" in output):
+                raise ValueError(f"{fileName} not found on the HTTP server! Copy could not be completed.\nPlease run the script again with the correct filename or add the missing file to the HTTP server.")
             return f"\n=== Output from {host} ===\n{output}"
-    except (NetmikoAuthenticationException, NetmikoTimeoutException) as e:
-        return f"[Error] Failed to connect to {host}: {e}"
+    except (NetmikoAuthenticationException) as e:
+        return f"\n[Error] Failed to connect to {host}: {e}"
+    except (ValueError, NetmikoTimeoutException) as e:
+        return f"\n[Error] Copy on {host} failed!: {e}"
         
 
 #def copyNDRtoFlash():
 
-#def verifySHA512():
+'''def verifySHA512():
+    verifyChecksum = f"verify /sha512 flash:{EOS_VERSION}.swi"'''
+
 
 
 #def changeBootConfig():
 
-#def reload()
+'''def reload():
+    reload_set = ["reload", "\n"]
+    
+    start_time = datetime.now()
+    output += net_connect.send_config_set(reload_set, delay_factor=10)
+    print(output)
+    if "login: " in output:
+        end_time = datetime.now()
+        print(f"Execution time: {start_time - end_time}")
+        net_connect
+        net_connect.enable()
+        output += net_connect().send_command("show version")
+        print(output)'''

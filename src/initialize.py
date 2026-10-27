@@ -45,34 +45,3 @@ def installNDROption():
     if (userInput == "y"):
         option = True
     return option
-
-def eosUpgrade():
-    net_connect = ConnectHandler(**deviceList[0])
-    net_connect.enable()
-
-    
-    verifyChecksum = f"verify /sha512 flash:{EOS_VERSION}.swi"
-    #net_connect
-    reload_set = ["reload", "\n"]
-    
-    #Tests
-    try: 
-        copyTest = f"copy http://{httpServerIP}:8000/test.txt flash:/test.txt"
-        output = net_connect.send_command(copyTest, expect_string="Copy completed successfully.")
-        print(output)
-    except (ReadTimeout) as e:
-        return f"Copy wasn't completed successfully. {e}"
-    start_time = datetime.now()
-    output += net_connect.send_config_set(reload_set, delay_factor=10)
-    print(output)
-    if "login: " in output:
-        end_time = datetime.now()
-        print(f"Execution time: {start_time - end_time}")
-        net_connect
-        net_connect.enable()
-        output += net_connect().send_command("show version")
-        print(output)
-
-
-
-#Break down EOS upgrade into three functions defined in docstring at the top.

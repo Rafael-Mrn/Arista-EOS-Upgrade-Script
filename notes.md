@@ -356,3 +356,55 @@ devices = []
 ```
 
 The executor checks this so it does not try to create a thread pool with zero workers.
+
+# How do I check for errors dynamically?
+To achieve this, you need to use Netmiko's low-level read methods. The standard send_command() function blocks execution until it either finds the expect_string or hits the read_timeout limit, meaning it won't check for errors dynamically as the text streams in.
+You can solve this by sending the command down the SSH channel and creating a custom read loop that checks the incoming text stream byte-by-byte or chunk-by-chunk in real time.
+Here is how to implement it:
+python
+import time
+from netmiko.exceptions import ReadTimeout
+
+### 1. Send the command to the channel (non-blocking)
+command = "your_long_copy_command_here"
+net_connect.write_channel(command + "\n")
+
+### 2. Set up your timeout parameters (10 minutes = 600 seconds)
+max_wait = 600
+start_time = time.time()
+output = ""
+
+### 3. Monitor the stream in real-time
+while (time.time() - start_time) < max_wait:
+    # Read any data available on the channel (non-blocking)
+    if net_connect.check_enable_channel():
+        new_data = net_connect.read_channel()
+        if new_data:
+            output += new_data
+            
+            # Fail immediately if the error string shows up
+            if "404 File not found" in output:
+                raise ValueError("File transfer failed: 404 File not found detected in device output.")
+            
+            # Succeed immediately if the success string shows up
+            if "Copy completed succesfully" in output:
+                break
+                
+    time.sleep(1)  # Small sleep to prevent maxing out your CPU
+else:
+    # If the loop exits via timeout rather than 'break'
+    raise ReadTimeout("The long-running command timed out after 10 minutes without finishing.")
+
+### Use 'output' normally here
+print("Command finished successfully!")
+Use code with caution.
+
+Why this approach works:
+
+• Immediate Fail: Because net_connect.read_channel() grabs text incrementally as the device outputs it, the script evaluates the string on every single loop iteration.
+• No Artificial Delay: If the "404" error appears 5 seconds into a 10-minute timeout window, your ValueError triggers at second 5 instead of waiting for the full 600 seconds.
+• Preserves Netmiko States: The device connection remains completely valid and stable because you are using Netmiko's native channel reading mechanisms.
+If you try this out, let me know:
+• Does the device use pagination (like a --More-- prompt) during this long output?
+• Does the success message appear at the very end of the output, or is there a standard device prompt (like Router#) that comes right after it?
+I can help adjust the matching logic to make sure the script gracefully catches the prompt if needed!
