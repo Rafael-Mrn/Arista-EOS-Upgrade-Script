@@ -6,6 +6,7 @@ extension to boot-extensions for boot persistance))
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from netmiko import ConnectHandler
 from netmiko import NetmikoAuthenticationException, NetmikoTimeoutException
+import json
 
 
 def concurrentExecutor(executeCommand, devices, *args, **kwargs): #THIS WILL BE CALLED BY main.py
@@ -37,17 +38,34 @@ def copyFiletoFlash(fileName, httpServerIP, device):
                 raise ValueError(f"{fileName} not found on the HTTP server! Copy could not be completed.\nPlease run the script again with the correct filename or add the missing file to the HTTP server.")
             return f"\n=== Output from {host} ===\n{output}"
     except (NetmikoAuthenticationException) as e:
-        return f"\n[Error] Failed to connect to {host}: {e}"
+        return f"\n[ERROR] Failed to connect to {host}: {e}"
     except (ValueError, NetmikoTimeoutException) as e:
-        return f"\n[Error] Copy on {host} failed!: {e}"
+        return f"\n[ERROR] Copy on {host} failed!: {e}"
+
+def verifySHA512(fileName, device):
+    file = open("eos_sha512_list.json", "r")
+
+    eosHashes_json = file.read()
+    eosHashes_dict = json.loads(eosHashes_json)
+    
+    command = f"verify /sha512 flash:{fileName}"
+    host = device["host"]
+
+    try:
+        if ("NDR" in fileName):
+            fileHash = eosHashes_dict["NDR_extensions"][fileName]
+        else:
+            fileHash = eosHashes_dict["EOS_images"][fileName]
         
-
-#def copyNDRtoFlash():
-
-'''def verifySHA512():
-    verifyChecksum = f"verify /sha512 flash:{EOS_VERSION}.swi"'''
-
-
+        with ConnectHandler(**device) as connection:
+            connection.enable()
+            output = connection.send_command(command, expect_string=fileHash, read_timeout=300)
+            return f"\nVerified hash for {fileName} on {host} successfully. \n{output}"
+    except (NetmikoAuthenticationException) as e:
+            return f"\n[ERROR] Failed to connect to {host}: {e}"
+    except (NetmikoTimeoutException, KeyError) as e:
+            return f"\n[ERROR] Couldn't verify hash. (\"{fileName}\" may not exist on switch flash or hash was incorrect, please reinstall the files. \nMore Information: {e}"
+    
 
 #def changeBootConfig():
 
@@ -64,3 +82,5 @@ def copyFiletoFlash(fileName, httpServerIP, device):
         net_connect.enable()
         output += net_connect().send_command("show version")
         print(output)'''
+
+# def installNDR()

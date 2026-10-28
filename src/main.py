@@ -14,16 +14,18 @@ from initialize import (
 )
 from upgrade import(
     concurrentExecutor,
-    copyFiletoFlash
+    copyFiletoFlash,
+    verifySHA512
 )
 
 def main():
     #Defines user password at runtime
     password = enterPassword() 
 
-    #Specifies target EOS Upgrade String which will be reused throughout the program
+    #Specifies target EOS Version string to define image and extensions filename string
     EOS_VERSION = input("Enter new EOS Version as a string (ie. EOS-4.34.4M): ")
     print(f"The target EOS is {EOS_VERSION}")
+    EOS_IMAGE = f"{EOS_VERSION}.swi"
 
     #Let's the user specify devices to update, collects management IPs
     hostname_to_IP_dicionary = HostnamesAndIPs()
@@ -44,27 +46,60 @@ def main():
     httpServerIP = getHTTPServerIP()
 
     #Helps define NDR extension filename as a string if True
-    if installNDROption() == True:
+    installNDRExtension = installNDROption();
+    if installNDRExtension:
         EXTENSION_NDR = f"{EOS_VERSION}-NDRSensor.swix"
         print(f"{EXTENSION_NDR} will be installed after EOS is upgraded.")
 
+
+    # COMMAND EXECUTION
+
     #Copy EOS file to flash
-    print("COPYING EOS FILE FROM HTTP SERVER TO SWITCHES...")
+    print("\n ===== COPYING EOS FILE FROM HTTP SERVER TO SWITCHES... ===== ")
     concurrentExecutor(
         copyFiletoFlash,
         deviceList,
-        fileName=f"{EOS_VERSION}.swi",
+        fileName=EOS_IMAGE,
         httpServerIP=httpServerIP,
     )
-
-    '''
+    
+    # Verify sha512 of eos image copied to flash
+    print(f"\n ===== VERIFYING SHA512 FOR {EOS_IMAGE} ON SWITCHES... ===== ")
     concurrentExecutor(
-            copyFiletoFlash,
-            deviceList,
-            fileName=f"{EOS_VERSION}-NDRSensor.swix",
-            httpServerIP=httpServerIP,
-        )
-    '''
+        verifySHA512,
+        deviceList,
+        fileName=EOS_IMAGE,
+    )
+
+    # Copy respective NDR extension to switches and verify sha512
+    if installNDRExtension:
+        print("\n ===== COPYING NDR EXTENSION FROM HTTP SERVER TO SWITCHES... =====")
+        concurrentExecutor(
+                copyFiletoFlash,
+                deviceList,
+                fileName=EXTENSION_NDR,
+                httpServerIP=httpServerIP,
+            )
+        
+        print(f"\n ===== VERIFYING SHA512 FOR {EXTENSION_NDR} ON SWITCHES... ===== ")
+        concurrentExecutor(
+                verifySHA512,
+                deviceList,
+                fileName=EOS_IMAGE,
+            )
+        
+
+    
+
+    
+
+    
+
+    
+
+
+
+    
 
 
 
