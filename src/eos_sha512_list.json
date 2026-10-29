@@ -1,9 +1,11 @@
 {
     "EOS_images" : {
-        "EOS64-4.34.8M.swi" : "7c5679570b586fc21afefe1ea8387fece48d434d37b4b2940695e06c01bfbc7a34afd5c2b04accc2c6f5d0ea7164dc6d6c177bb4d7981f27b6fb9f4ea886b3ea"
+        "EOS64-4.34.8M.swi" : "7c5679570b586fc21afefe1ea8387fece48d434d37b4b2940695e06c01bfbc7a34afd5c2b04accc2c6f5d0ea7164dc6d6c177bb4d7981f27b6fb9f4ea886b3ea",
+        "EOS-4.34.8M.swi" : "2b0c70127f9adbd6311ba2fe9b9f9a22ebd9a168663025cd3eaebf2c9ea4e46af8a06658f64b7199a511c98fd9cd092b58d21cb0638e6bddb2ebfea183491034"
     },
 
     "NDR_extensions" : {
-        "EOS64-4.34.8M-NDRSensor.swix" : "c7fc00cee5c0bbb464e4b758dfb8f4c57b4316ac7d23b3b09cf5e20cda93853f2f53d1654a957435ef6dccd7cad586ea8f17368b7bdb2612fdf31aeec682d808"
+        "EOS64-4.34.8M-NDRSensor.swix" : "726b73176124643a2374528fc9833acd42981a67990882cb31f3f328db43cb7c8acbd3f94c7acf882d9b5eb5f863fedff5cd7e08d0fa21ec2093442fc7629ea2",
+        "EOS-4.34.8M-NDRSensor.swix" : "c7fc00cee5c0bbb464e4b758dfb8f4c57b4316ac7d23b3b09cf5e20cda93853f2f53d1654a957435ef6dccd7cad586ea8f17368b7bdb2612fdf31aeec682d808"
     }
 }

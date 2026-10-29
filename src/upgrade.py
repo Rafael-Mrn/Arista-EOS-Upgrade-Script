@@ -67,11 +67,14 @@ def verifySHA512(fileName, device):
             return f"\n[ERROR] Couldn't verify hash. (\"{fileName}\" may not exist on switch flash or hash was incorrect, please reinstall the files. \nMore Information: {e}"
     
 
-#def changeBootConfig():
+def changeBootConfig(eosImage):
+    # command set: "boot system, show boot-config, write mem"
+    command_set = f"boot system flash:/{eosImage}"
 
-'''def reload():
+
+
+def reload():
     reload_set = ["reload", "\n"]
-    
     start_time = datetime.now()
     output += net_connect.send_config_set(reload_set, delay_factor=10)
     print(output)
@@ -81,6 +84,6 @@ def verifySHA512(fileName, device):
         net_connect
         net_connect.enable()
         output += net_connect().send_command("show version")
-        print(output)'''
+        print(output)
 
 # def installNDR()

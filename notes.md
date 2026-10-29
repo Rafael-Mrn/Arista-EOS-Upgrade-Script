@@ -408,3 +408,48 @@ If you try this out, let me know:
 • Does the device use pagination (like a --More-- prompt) during this long output?
 • Does the success message appear at the very end of the output, or is there a standard device prompt (like Router#) that comes right after it?
 I can help adjust the matching logic to make sure the script gracefully catches the prompt if needed!
+
+# How to handle reload?
+To handle a device reload in Netmiko, you must handle the confirmation prompt (such as [confirm]) using send_command_timing or expect_string, and manage the SSH connection drop to avoid race conditions or script crashes. [1] (https://github.com/ktbyers/netmiko/issues/1914), [2] (https://italchemy.wordpress.com/2020/04/14/python-netmiko-cisco-router-switch-reload-n/), [3] (https://stackoverflow.com/questions/55917470/how-to-reboot-the-cisco-switch-with-netmiko-ssh-python)
+
+### 1. Sending the Reload Command & Confirmation
+
+Network devices like Cisco IOS typically prompt you with [confirm] or Proceed with reload? after receiving the reload command. [1] (https://github.com/ktbyers/netmiko/issues/1914), [2] (https://italchemy.wordpress.com/2020/04/14/python-netmiko-cisco-router-switch-reload-n/), [3] (https://stackoverflow.com/questions/55917470/how-to-reboot-the-cisco-switch-with-netmiko-ssh-python)
+• Using send_command_timing: This method sends the reload command and then pushes a confirmation character (like a newline \n) after a brief delay. [1] (https://github.com/ktbyers/netmiko/issues/1101), [2] (https://github.com/ktbyers/netmiko/issues/1914)
+python
+import time
+from netmiko import ConnectHandler
+
+net_connect = ConnectHandler(**device)
+
+#### Send the reload command and confirm the prompt
+output = net_connect.send_command_timing("reload", strip_command=False)
+if "confirm" in output.lower():
+    output += net_connect.send_command_timing("\n", strip_command=False)
+
+print(output)
+Use code with caution.
+
+* **Using `expect_string`:** Alternatively, you can look for the specific prompt text using `send_command`:
+  ```pydocstring
+  output = net_connect.send_command(
+      "reload", expect_string=r"\[confirm\]", strip_command=False
+  )
+  output += net_connect.send_command_timing("\n", strip_command=False)
+
+### 2. Handling the Disconnect / Race Condition
+
+When a device reloads, the SSH session drops abruptly. [1] (https://github.com/ktbyers/netmiko/issues/2567), [2] (https://github.com/ktbyers/netmiko/issues/1914)
+• Catch Exceptions: Wrap the reload command in a try...except block because Netmiko will raise a connection or EOF exception when the device drops the socket. [1] (https://www.youtube.com/watch?v=hNcv3bdbxcI&t=4), [2] (https://github.com/ktbyers/netmiko/issues/2567)
+• Avoid Immediate Reconnection: Newer Netmiko versions establish SSH sessions very quickly. If your script immediately tries to reconnect or run subsequent commands, it can hit a race condition where it tries to talk to a device that is still shutting down. [1] (https://github.com/ktbyers/netmiko/issues/1914)
+• Clean Disconnect: Call net_connect.disconnect() or let the exception handle closing the transport cleanly. [1] (https://github.com/ktbyers/netmiko/issues/1914), [2] (https://github.com/ktbyers/netmiko/issues/2567), [3] (https://github.com/ktbyers/netmiko/issues/1101)
+python
+try:
+    net_connect.send_command_timing("reload")
+    net_connect.send_command_timing("\n")
+except Exception as e:
+    print(f"Device is reloading, connection dropped as expected: {e}")
+finally:
+    # Do not immediately reconnect; give the device time to go down
+    time.sleep(15)
+Use code with caution.

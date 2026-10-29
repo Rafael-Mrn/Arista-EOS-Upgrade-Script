@@ -22,6 +22,15 @@ def main():
     #Defines user password at runtime
     password = enterPassword() 
 
+    ''' 
+    Instead of asking for exact string you can ask for version (ie. 4.34.8M) 
+    then ask for architecture (ie. 32-bit or 64-bit). Once this information is defined, build the
+    respective .swi and .swix file name strings.
+
+    Before you continue, ask "is this the correct version?: ie. EOS64-4.34.8M"
+    '''
+
+
     #Specifies target EOS Version string to define image and extensions filename string
     EOS_VERSION = input("Enter new EOS Version as a string (ie. EOS-4.34.4M): ")
     print(f"The target EOS is {EOS_VERSION}")
@@ -55,7 +64,7 @@ def main():
     # COMMAND EXECUTION
 
     #Copy EOS file to flash
-    print("\n ===== COPYING EOS FILE FROM HTTP SERVER TO SWITCHES... ===== ")
+    print("\n===== COPYING EOS FILE FROM HTTP SERVER TO SWITCHES... ===== ")
     concurrentExecutor(
         copyFiletoFlash,
         deviceList,
@@ -64,7 +73,7 @@ def main():
     )
     
     # Verify sha512 of eos image copied to flash
-    print(f"\n ===== VERIFYING SHA512 FOR {EOS_IMAGE} ON SWITCHES... ===== ")
+    print(f"\n===== VERIFYING SHA512 FOR {EOS_IMAGE} ON SWITCHES... ===== ")
     concurrentExecutor(
         verifySHA512,
         deviceList,
@@ -73,7 +82,7 @@ def main():
 
     # Copy respective NDR extension to switches and verify sha512
     if installNDRExtension:
-        print("\n ===== COPYING NDR EXTENSION FROM HTTP SERVER TO SWITCHES... =====")
+        print("\n===== COPYING NDR EXTENSION FROM HTTP SERVER TO SWITCHES... =====")
         concurrentExecutor(
                 copyFiletoFlash,
                 deviceList,
@@ -81,12 +90,14 @@ def main():
                 httpServerIP=httpServerIP,
             )
         
-        print(f"\n ===== VERIFYING SHA512 FOR {EXTENSION_NDR} ON SWITCHES... ===== ")
+        print(f"\n===== VERIFYING SHA512 FOR {EXTENSION_NDR} ON SWITCHES... ===== ")
         concurrentExecutor(
                 verifySHA512,
                 deviceList,
-                fileName=EOS_IMAGE,
+                fileName=EXTENSION_NDR,
             )
+
+    
         
 
     
