@@ -41,7 +41,7 @@ def copyFiletoFlash(fileName, httpServerIP, device):
         return f"\n[ERROR] Failed to connect to {host}: {e}"
     except (ValueError, NetmikoTimeoutException) as e:
         return f"\n[ERROR] Copy on {host} failed!: {e}"
-
+    
 def verifySHA512(fileName, device):
     file = open("eos_sha512_list.json", "r")
 
@@ -66,12 +66,28 @@ def verifySHA512(fileName, device):
     except (NetmikoTimeoutException, KeyError) as e:
             return f"\n[ERROR] Couldn't verify hash. (\"{fileName}\" may not exist on switch flash or hash was incorrect, please reinstall the files. \nMore Information: {e}"
     
-
-def changeBootConfig(eosImage):
+# Changes boot config to new EOS image and verifies output
+def changeBootConfig(eosImage, device):
     # command set: "boot system, show boot-config, write mem"
-    command_set = f"boot system flash:/{eosImage}"
+    command_set = {
+        "boot system flash:/{eosImage}",
+        "show boot-config",
+    }
 
+    host = device["host"]
 
+    try:
+        with ConnectHandler(**device) as connection:
+            connection.enable()
+            output = connection.send_config_set(command_set)
+            if (eosImage not in output):
+                raise ValueError(f"{eosImage} not in the output of 'show boot-config' command.")
+            output += connection.send_command("write memory", expect_string = "Copy completed successfully", read_timeout = 30)
+            return f"\nChanged boot config and saved to startup-config on {host} successfully!\n=== Output from {host} ===\n{output}"
+    except (NetmikoAuthenticationException) as e:
+        return f"\n[ERROR] Failed to connect to {host}: {e}"
+    except (ValueError, NetmikoTimeoutException) as e:
+        return f"\n[ERROR] Change boot config failed on device {host}!\nSee output from the device:\n{output}\n{e}"
 
 def reload():
     reload_set = ["reload", "\n"]
