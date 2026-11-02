@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from netmiko import ConnectHandler
 from netmiko import NetmikoAuthenticationException, NetmikoTimeoutException
 import json
+import time
 
 
 def concurrentExecutor(executeCommand, devices, *args, **kwargs): #THIS WILL BE CALLED BY main.py
@@ -64,22 +65,22 @@ def verifySHA512(fileName, device):
     except (NetmikoAuthenticationException) as e:
             return f"\n[ERROR] Failed to connect to {host}: {e}"
     except (NetmikoTimeoutException, KeyError) as e:
-            return f"\n[ERROR] Couldn't verify hash. (\"{fileName}\" may not exist on switch flash or hash was incorrect, please reinstall the files. \nMore Information: {e}"
+            return f"\n[ERROR] Couldn't verify hash. (\"{fileName}\" may not exist on switch flash or hash was incorrect, please reinstall the file. \nMore Information: {e}"
     
 # Changes boot config to new EOS image and verifies output
 def changeBootConfig(eosImage, device):
     # command set: "boot system, show boot-config, write mem"
-    command_set = {
-        "boot system flash:/{eosImage}",
+    command_set = [
+        f"boot system flash:/{eosImage}",
         "show boot-config",
-    }
+    ]
 
     host = device["host"]
 
     try:
         with ConnectHandler(**device) as connection:
             connection.enable()
-            output = connection.send_config_set(command_set)
+            output = connection.send_config_set(command_set, expect_string=eosImage, read_timeout=300)
             if (eosImage not in output):
                 raise ValueError(f"{eosImage} not in the output of 'show boot-config' command.")
             output += connection.send_command("write memory", expect_string = "Copy completed successfully", read_timeout = 30)
@@ -87,19 +88,54 @@ def changeBootConfig(eosImage, device):
     except (NetmikoAuthenticationException) as e:
         return f"\n[ERROR] Failed to connect to {host}: {e}"
     except (ValueError, NetmikoTimeoutException) as e:
-        return f"\n[ERROR] Change boot config failed on device {host}!\nSee output from the device:\n{output}\n{e}"
+        return f"\n[ERROR] Change boot config failed on device {host}!\n{e}"
 
-def reload():
-    reload_set = ["reload", "\n"]
-    start_time = datetime.now()
-    output += net_connect.send_config_set(reload_set, delay_factor=10)
-    print(output)
-    if "login: " in output:
-        end_time = datetime.now()
-        print(f"Execution time: {start_time - end_time}")
-        net_connect
-        net_connect.enable()
-        output += net_connect().send_command("show version")
-        print(output)
+def reload(device):
+    host = device["host"]
 
-# def installNDR()
+    try:
+        with ConnectHandler(**device) as connection:
+            connection.enable()
+
+            # Save running-config everytime before reload
+            output = connection.send_command("write memory")
+
+            output += connection.send_command("reload", expect_string="[confirm]", read_timeout=300)
+            # Confirm reload
+            output += connection.send_command("\n")
+
+            # Disconnect from device
+            output += connection.disconnect()
+            print(f"Disconnected from {host}. Device is reloading...")
+    except (NetmikoAuthenticationException) as e:
+        return f"\n[ERROR] Failed to connect to {host}: {e}"
+
+def forceConnect(device):
+    host = device["host"]
+    
+    try:
+        with ConnectHandler(**device) as connection:
+            print(f"\nAttempting connection to {host}...")
+            connection.enable()
+            return f"\nConnected successfully. {host} is back up!"
+    except Exception as e:
+        time.sleep(10)
+        forceConnect(device)
+
+""" def installNDR(ndrExtension, device):
+    install_NDR_set = [
+        f"copy flash:{ndrExtension} extension:",
+        f"extension {ndrExtension}",
+        f"copy installed-extensions boot-extensions"
+    ]
+
+    error_set = [
+
+    ]
+
+    try:
+        with ConnectHandler(**device) as connection:
+            connection.enable()
+            output = connection.send_config_set(install_NDR_set)
+ """
+
