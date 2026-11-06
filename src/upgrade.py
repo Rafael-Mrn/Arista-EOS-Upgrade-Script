@@ -110,6 +110,7 @@ def reload(device):
     except (NetmikoAuthenticationException) as e:
         return f"\n[ERROR] Failed to connect to {host}: {e}"
 
+# Add Max Attempts, then use for loop?
 def forceConnect(device):
     host = device["host"]
     

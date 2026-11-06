@@ -25,9 +25,6 @@ from threading import Timer
 import sys
 import time
 
-
-
-
 def main():
     #Defines user password at runtime
     user = input("Enter the user to access the switches: ")
