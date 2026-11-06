@@ -137,23 +137,29 @@ def installNDR(ndrExtension, device):
                 print(f"{ndrExtension} is not on {host}'s flash. Attempting to copy {ndrExtension} from HTTP server...")
                 httpServer = input("Enter HTTP server IP address: ")
                 print("Attemping copy...")
-                copyFiletoFlash(ndrExtension, httpServerIP=httpServer, device=device)
-                raise ValueError(f"{ndrExtension} not on flash: of {host}!\nSee output of 'dir flash:' from {host}:\n{verifyExtensionOnFlash}")
+                
+                print(copyFiletoFlash(ndrExtension, httpServerIP=httpServer, device=device))
+                installationOutput = connection.send_command("dir flash: ")
+                
+                if (ndrExtension not in installationOutput):
+                    raise ValueError(f"{ndrExtension} not on flash: of {host}!\nSee output of 'dir flash:' from {host}:\n{verifyExtensionOnFlash}")
             
             output = connection.send_command(f"copy flash:{ndrExtension} extension:", expect_string="Copy completed successfully")
-            print(f"Copied {ndrExtension} to extension: partition successfully!\nOutput from {host}:\n{output}")
+            print(f"Copied {ndrExtension} to extension partition successfully on {host}...")
 
             #Install extension
             output += connection.send_command(f"extension {ndrExtension}") #Command has no output if successful
             if ("Extension not found" in output):
-                raise ValueError(f"Couldn't install {ndrExtension} on {host}. This could be because it wasn't found on the extension: partition.\n\nSee output from {host}:\n{output}")
+                raise ValueError(f"Couldn't install {ndrExtension} on {host}. This could be because it wasn't found on the extension partition.\n\nSee output from {host}:\n{output}")
+            print(f"Installed {ndrExtension} successfully on {host}...")
 
             #Copy installed extension to boot extensions
-            output += connection.send_command(f"copy installed-extensions boot-extensions") #Command succeeds even if there are no installed extensions
+            output += "\n" + connection.send_command(f"copy installed-extensions boot-extensions") #Command succeeds even if there are no installed extensions
+            print(f"Copied installed extensions to boot extensions on {host}...")
 
             #Verify
-            output += connection.send_command("show exetensions")
-            output += connection.send_command("show boot-extensions", expect_String=ndrExtension)
+            output += "\n" + connection.send_command("show extensions")
+            output += "\n" + connection.send_command("show boot-extensions", expect_string=ndrExtension)
             return f"Installed NDR extension successfully for {host}!\n--- Output from {host} ---\n{output}"
     except (NetmikoAuthenticationException) as e:
         return f"\n[ERROR] Failed to connect to {host}: {e}"

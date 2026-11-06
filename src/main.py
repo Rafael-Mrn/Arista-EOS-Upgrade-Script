@@ -104,7 +104,7 @@ def main():
                 verifySHA512,
                 deviceList,
                 fileName=EXTENSION_NDR,
-            ) """
+            )
     
     # Change boot config to new eos image
     print("\n===== CHANGING BOOT CONFIG ON SWITCHES TO THE TARGET EOS IMAGE... =====")
@@ -132,7 +132,7 @@ def main():
     concurrentExecutor(
         forceConnect,
         deviceList
-    )
+    ) """
 
     # Install NDR Extension
     print("\n===== INSTALLING NDR EXTENSION ON ALL SWITCHES... =====")
