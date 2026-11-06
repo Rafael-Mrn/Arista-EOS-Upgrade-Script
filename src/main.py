@@ -18,7 +18,8 @@ from upgrade import(
     verifySHA512,
     changeBootConfig,
     reload,
-    forceConnect
+    forceConnect,
+    installNDR
 )
 
 from threading import Timer
@@ -133,6 +134,13 @@ def main():
         deviceList
     )
 
+    # Install NDR Extension
+    print("\n===== INSTALLING NDR EXTENSION ON ALL SWITCHES... =====")
+    concurrentExecutor(
+        installNDR,
+        deviceList,
+        ndrExtension=EXTENSION_NDR
+    )
 
     
         

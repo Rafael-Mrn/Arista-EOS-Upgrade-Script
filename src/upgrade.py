@@ -37,7 +37,7 @@ def copyFiletoFlash(fileName, httpServerIP, device):
             output = connection.send_command(command, expect_string="Copy completed successfully.", read_timeout=600)
             if ("404 File not found" in output):
                 raise ValueError(f"{fileName} not found on the HTTP server! Copy could not be completed.\nPlease run the script again with the correct filename or add the missing file to the HTTP server.")
-            return f"\n=== Output from {host} ===\n{output}"
+            return f"Copied {fileName} to {host} successfully!\n--- Output from {host} ---\n{output}"
     except (NetmikoAuthenticationException) as e:
         return f"\n[ERROR] Failed to connect to {host}: {e}"
     except (ValueError, NetmikoTimeoutException) as e:
@@ -61,7 +61,7 @@ def verifySHA512(fileName, device):
         with ConnectHandler(**device) as connection:
             connection.enable()
             output = connection.send_command(command, expect_string=fileHash, read_timeout=300)
-            return f"\nVerified hash for {fileName} on {host} successfully. \n{output}"
+            return f"\nVerified hash for {fileName} on {host} successfully.\n--- Output from {host} ---\n{output}"
     except (NetmikoAuthenticationException) as e:
             return f"\n[ERROR] Failed to connect to {host}: {e}"
     except (NetmikoTimeoutException, KeyError) as e:
@@ -84,7 +84,7 @@ def changeBootConfig(eosImage, device):
             if (eosImage not in output):
                 raise ValueError(f"{eosImage} not in the output of 'show boot-config' command.")
             output += connection.send_command("write memory", expect_string = "Copy completed successfully", read_timeout = 30)
-            return f"\nChanged boot config and saved to startup-config on {host} successfully!\n=== Output from {host} ===\n{output}"
+            return f"\nChanged boot config and saved to startup-config on {host} successfully!\n--- Output from {host} ---\n{output}"
     except (NetmikoAuthenticationException) as e:
         return f"\n[ERROR] Failed to connect to {host}: {e}"
     except (ValueError, NetmikoTimeoutException) as e:
@@ -107,6 +107,7 @@ def reload(device):
             # Disconnect from device
             output += connection.disconnect()
             print(f"Disconnected from {host}. Device is reloading...")
+            return
     except (NetmikoAuthenticationException) as e:
         return f"\n[ERROR] Failed to connect to {host}: {e}"
 
@@ -120,23 +121,50 @@ def forceConnect(device):
             connection.enable()
             return f"\nConnected successfully. {host} is back up!"
     except Exception as e:
-        time.sleep(10)
+        time.sleep(30)
         forceConnect(device)
 
-""" def installNDR(ndrExtension, device):
-    install_NDR_set = [
-        f"copy flash:{ndrExtension} extension:",
-        f"extension {ndrExtension}",
-        f"copy installed-extensions boot-extensions"
-    ]
-
-    error_set = [
-
-    ]
+def installNDR(ndrExtension, device):
+    host = device["host"]
 
     try:
         with ConnectHandler(**device) as connection:
             connection.enable()
-            output = connection.send_config_set(install_NDR_set)
- """
+            
+            verifyExtensionOnFlash = connection.send_command("dir flash: ")
+            if (ndrExtension not in verifyExtensionOnFlash):
+                #Add ability to attempt copyFileToFlash()
+                print(f"{ndrExtension} is not on {host}'s flash. Attempting to copy {ndrExtension} from HTTP server...")
+                httpServer = input("Enter HTTP server IP address: ")
+                print("Attemping copy...")
+                copyFiletoFlash(ndrExtension, httpServerIP=httpServer, device=device)
+                raise ValueError(f"{ndrExtension} not on flash: of {host}!\nSee output of 'dir flash:' from {host}:\n{verifyExtensionOnFlash}")
+            
+            output = connection.send_command(f"copy flash:{ndrExtension} extension:", expect_string="Copy completed successfully")
+            print(f"Copied {ndrExtension} to extension: partition successfully!\nOutput from {host}:\n{output}")
+
+            #Install extension
+            output += connection.send_command(f"extension {ndrExtension}") #Command has no output if successful
+            if ("Extension not found" in output):
+                raise ValueError(f"Couldn't install {ndrExtension} on {host}. This could be because it wasn't found on the extension: partition.\n\nSee output from {host}:\n{output}")
+
+            #Copy installed extension to boot extensions
+            output += connection.send_command(f"copy installed-extensions boot-extensions") #Command succeeds even if there are no installed extensions
+
+            #Verify
+            output += connection.send_command("show exetensions")
+            output += connection.send_command("show boot-extensions", expect_String=ndrExtension)
+            return f"Installed NDR extension successfully for {host}!\n--- Output from {host} ---\n{output}"
+    except (NetmikoAuthenticationException) as e:
+        return f"\n[ERROR] Failed to connect to {host}: {e}"
+    except (ValueError, NetmikoTimeoutException) as e:
+        return f"\n[ERROR] Failed to complete install NDR extension for {host}:\n{e}"
+
+            
+
+
+
+
+
+ 
 
