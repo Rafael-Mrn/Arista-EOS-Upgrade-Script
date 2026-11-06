@@ -101,13 +101,18 @@ def reload(device):
 
             # Save running-config everytime before reload
             output = connection.send_command("write memory")
+            print(f"Preparing reload...saved running-config to startup-config on {host}")
 
             output += connection.send_command("reload", expect_string="[confirm]", read_timeout=300)
+
             # Confirm reload
-            output += connection.send_command("\n")
+            print(f"Confirming reload on {host}...")
+            connection.write_channel("\r\n")
+
+            time.sleep(2)
 
             # Disconnect from device
-            output += connection.disconnect()
+            connection.disconnect()
             print(f"Disconnected from {host}. Device is reloading...")
             return
     except (NetmikoAuthenticationException) as e:

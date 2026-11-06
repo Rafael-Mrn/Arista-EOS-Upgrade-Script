@@ -105,7 +105,7 @@ def main():
                 deviceList,
                 fileName=EXTENSION_NDR,
             )
-    """
+    
     
     # Change boot config to new eos image
     print("\n===== CHANGING BOOT CONFIG ON SWITCHES TO THE TARGET EOS IMAGE... =====")
@@ -123,12 +123,12 @@ def main():
     )
 
     # Give time for devices to reboot
-    print("\n===== WAITING FOR DEVICES TO REBOOT, PLEASE ALLOW 4 MINUTES... =====")
+    """     print("\n===== WAITING FOR DEVICES TO REBOOT, PLEASE ALLOW 4 MINUTES... =====")
     time.sleep(240)
 
     # Try to connect to the devices until a connection is successful, times out after 6 minutes
     connectTimer = Timer(360, sys.exit())
-    connectTimer.start()
+    connectTimer.start() """
     
     print("\n===== TRYING TO RECONNECT AFTER REBOOT... =====")
     concurrentExecutor(
@@ -136,6 +136,7 @@ def main():
         deviceList
     )
 
+    """
     # Install NDR Extension
     print("\n===== INSTALLING NDR EXTENSION ON ALL SWITCHES... =====")
     concurrentExecutor(
