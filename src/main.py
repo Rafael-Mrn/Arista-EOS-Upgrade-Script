@@ -105,6 +105,7 @@ def main():
                 deviceList,
                 fileName=EXTENSION_NDR,
             )
+    """
     
     # Change boot config to new eos image
     print("\n===== CHANGING BOOT CONFIG ON SWITCHES TO THE TARGET EOS IMAGE... =====")
@@ -114,6 +115,7 @@ def main():
         eosImage=EOS_IMAGE
     ) 
 
+    """
     print("\n===== RELOADING SWITCHES, THIS MAY TAKE 5-10 MINUTES... =====")
     concurrentExecutor(
         reload,
@@ -132,7 +134,7 @@ def main():
     concurrentExecutor(
         forceConnect,
         deviceList
-    ) """
+    )
 
     # Install NDR Extension
     print("\n===== INSTALLING NDR EXTENSION ON ALL SWITCHES... =====")
@@ -140,7 +142,7 @@ def main():
         installNDR,
         deviceList,
         ndrExtension=EXTENSION_NDR
-    )
+    ) """
 
     
         

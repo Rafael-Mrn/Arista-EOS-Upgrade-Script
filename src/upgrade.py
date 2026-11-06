@@ -80,9 +80,11 @@ def changeBootConfig(eosImage, device):
     try:
         with ConnectHandler(**device) as connection:
             connection.enable()
-            output = connection.send_config_set(command_set, expect_string=eosImage, read_timeout=300)
+            
+            output = connection.send_config_set(command_set, read_timeout=300)
             if (eosImage not in output):
                 raise ValueError(f"{eosImage} not in the output of 'show boot-config' command.")
+           
             output += connection.send_command("write memory", expect_string = "Copy completed successfully", read_timeout = 30)
             return f"\nChanged boot config and saved to startup-config on {host} successfully!\n--- Output from {host} ---\n{output}"
     except (NetmikoAuthenticationException) as e:
