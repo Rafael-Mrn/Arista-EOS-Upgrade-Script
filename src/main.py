@@ -71,9 +71,9 @@ def main():
 
 
     # COMMAND EXECUTION
-
+    
     #Copy EOS file to flash
-    """     print("\n===== COPYING EOS FILE FROM HTTP SERVER TO SWITCHES... ===== ")
+    print("\n===== COPYING EOS FILE FROM HTTP SERVER TO SWITCHES... ===== ")
     concurrentExecutor(
         copyFiletoFlash,
         deviceList,
@@ -113,55 +113,42 @@ def main():
         changeBootConfig,
         deviceList,
         eosImage=EOS_IMAGE
-    ) 
+    )
 
-    """
-    print("\n===== RELOADING SWITCHES, THIS MAY TAKE 5-10 MINUTES... =====")
+    
+    print("\n===== RELOADING SWITCHES, THIS MAY TAKE A WHILE... =====")
     concurrentExecutor(
         reload,
         deviceList
     )
 
     # Give time for devices to reboot
-    """     print("\n===== WAITING FOR DEVICES TO REBOOT, PLEASE ALLOW 4 MINUTES... =====")
-    time.sleep(240)
-
-    # Try to connect to the devices until a connection is successful, times out after 6 minutes
-    connectTimer = Timer(360, sys.exit())
-    connectTimer.start() """
+    print("\n===== WAITING FOR DEVICES TO REBOOT, PLEASE ALLOW A FEW MINUTES... =====")
+    # Shorter sleep time for 64-bit devices since they reboot faster
+    if ("EOS64" in EOS_VERSION):
+        print("\nTime to wait: 4 minutes")
+        time.sleep(240)
+    else:
+        print("\nTime to wait: 8 minutes")
+        time.sleep(480)
     
     print("\n===== TRYING TO RECONNECT AFTER REBOOT... =====")
     concurrentExecutor(
         forceConnect,
         deviceList
     )
-
-    """
-    # Install NDR Extension
-    print("\n===== INSTALLING NDR EXTENSION ON ALL SWITCHES... =====")
-    concurrentExecutor(
-        installNDR,
-        deviceList,
-        ndrExtension=EXTENSION_NDR
-    ) """
-
+    
+    if installNDRExtension:
+        # Install NDR Extension
+        print("\n===== INSTALLING NDR EXTENSION ON ALL SWITCHES... =====")
+        concurrentExecutor(
+            installNDR,
+            deviceList,
+            ndrExtension=EXTENSION_NDR
+        )
+    
     
         
-
-    
-
-    
-
-    
-
-    
-
-
-
-    
-
-
-
 
     #PLEASE CREATE PROPER TEST FUNCTIONS TO TEST FASTER 
     #AND TO TEST EACH NEW FUNCITON IN upgrade.py.

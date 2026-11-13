@@ -80,16 +80,16 @@ def changeBootConfig(eosImage, device):
     try:
         with ConnectHandler(**device) as connection:
             connection.enable()
+            connection.config_mode()
+            output = connection.send_command(f"boot system flash:{eosImage}", read_timeout=300, strip_command=False, strip_prompt=False)
+            output += '\n' + connection.send_command("show boot-config", expect_string=eosImage, read_timeout=30)
+            output += '\n' + connection.send_command("write memory", expect_string = "Copy completed successfully", read_timeout = 30)
+
             
-            output = connection.send_config_set(command_set, read_timeout=300)
-            if (eosImage not in output):
-                raise ValueError(f"{eosImage} not in the output of 'show boot-config' command.")
-           
-            output += connection.send_command("write memory", expect_string = "Copy completed successfully", read_timeout = 30)
             return f"\nChanged boot config and saved to startup-config on {host} successfully!\n--- Output from {host} ---\n{output}"
     except (NetmikoAuthenticationException) as e:
         return f"\n[ERROR] Failed to connect to {host}: {e}"
-    except (ValueError, NetmikoTimeoutException) as e:
+    except (NetmikoTimeoutException) as e:
         return f"\n[ERROR] Change boot config failed on device {host}!\n{e}"
 
 def reload(device):
@@ -103,20 +103,34 @@ def reload(device):
             output = connection.send_command("write memory")
             print(f"Preparing reload...saved running-config to startup-config on {host}")
 
-            output += connection.send_command("reload", expect_string="[confirm]", read_timeout=300)
+            print("Sending reload command...")
+            output += connection.send_command("reload", expect_string="confirm", read_timeout=300)
+            print(f"Output after reload command:\n{output}")
 
             # Confirm reload
             print(f"Confirming reload on {host}...")
             connection.write_channel("\r\n")
 
-            time.sleep(2)
+            print("Sleeping 5 seconds")
+            time.sleep(5)
 
             # Disconnect from device
+            reloadOutput = connection.read_channel()
+
+            # Confirm Reboot happened
+            print(reloadOutput)
+            if ("The system is going down for reboot NOW!" not in reloadOutput):
+                raise RuntimeError(f"Reload on {host} failed! Output: {reloadOutput!r}")
+
+            # Gracefully disconnect from host to avoid exception, return success message
+            print(f"Disconnecting from {host}...")
             connection.disconnect()
-            print(f"Disconnected from {host}. Device is reloading...")
-            return
+            return f"Disconnected from {host}. Device is reloading..."
+        
     except (NetmikoAuthenticationException) as e:
         return f"\n[ERROR] Failed to connect to {host}: {e}"
+    except (NetmikoTimeoutException) as e:
+        return f"\n[ERROR] Reload on {host} failed!: {e}\nSee output on {host}\n{output}"
 
 # Add Max Attempts, then use for loop?
 def forceConnect(device):
@@ -124,10 +138,11 @@ def forceConnect(device):
     
     try:
         with ConnectHandler(**device) as connection:
-            print(f"\nAttempting connection to {host}...")
+            print(f"\nAttempting connection to {host}...", flush=True)
             connection.enable()
-            return f"\nConnected successfully. {host} is back up!"
-    except Exception as e:
+            return f"\nConnected successfully, {host} is back up!"
+    except (NetmikoAuthenticationException, NetmikoTimeoutException) as e:
+        print(f"Connection to {host} failed. Device is still reloading...Waiting 30 seconds before next attempt.")
         time.sleep(30)
         forceConnect(device)
 
@@ -155,7 +170,7 @@ def installNDR(ndrExtension, device):
             print(f"Copied {ndrExtension} to extension partition successfully on {host}...")
 
             #Install extension
-            output += connection.send_command(f"extension {ndrExtension}") #Command has no output if successful
+            output += connection.send_command(f"extension {ndrExtension}", read_timeout=15) #Command has no output if successful
             if ("Extension not found" in output):
                 raise ValueError(f"Couldn't install {ndrExtension} on {host}. This could be because it wasn't found on the extension partition.\n\nSee output from {host}:\n{output}")
             print(f"Installed {ndrExtension} successfully on {host}...")
