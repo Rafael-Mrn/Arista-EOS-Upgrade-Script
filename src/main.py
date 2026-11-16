@@ -52,10 +52,11 @@ def main():
 
     #Populates device list using IP values from hostname_and_IP dictionary
     deviceList = []
-    for ip in hostname_to_IP_dicionary.values():
+    for host, ip in hostname_to_IP_dicionary.items():
         device = {
             "device_type": "arista_eos",
-            "host": ip,
+            "host" : host,
+            "ip": ip,
             "username": user,
             "password": password
         }
