@@ -17,7 +17,7 @@ def HostnamesAndIPs():
     #Creates a dictionary with key hostname and value managament IP address from user input
     hostname_and_IP = {}
     devicesTargeted = int(input("Enter the number of devices that will be targeted: "))
-    print("Please enter the switch hostnames along with their management IP.")
+    print("Please enter the switch hostnames along with their management IP...")
 
     for i in range(devicesTargeted):
         hostname = input(f"[{i+1}] Hostname: ")
@@ -26,8 +26,8 @@ def HostnamesAndIPs():
 
     return hostname_and_IP
 
-def printDeviceList(deviceList):
-    for hostname, ip in deviceList.items():
+def printTargetedDevices(targetedDevices: dict):
+    for hostname, ip in targetedDevices.items():
         print(f"{hostname} ({ip})\n")
 
 def getHTTPServerIP():
