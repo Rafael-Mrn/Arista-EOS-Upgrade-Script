@@ -6,12 +6,15 @@
    extension to boot-extensions for boot persistance)) 
 '''
 from initialize import (
-    enterPassword,
-    HostnamesAndIPs,
-    printTargetedDevices,
-    getHTTPServerIP,
-    installNDROption
+    enter_password,
+    get_hostnames_and_ips,
+    print_targeted_devices,
+    get_http_server_ip,
+    install_ndr_option
 )
+
+from switch import Switch
+
 from upgrade import(
     concurrentExecutor,
     copyFiletoFlash,
@@ -22,60 +25,45 @@ from upgrade import(
     installNDR
 )
 
-from threading import Timer
-import sys
+from upgrade import UpgradeManager
+
 import time
 
 def main():
     #Defines user password at runtime
-    user = input("Enter the user to access the switches: ")
-    password = enterPassword() 
-
-    ''' 
-    Instead of asking for exact string you can ask for version (ie. 4.34.8M) 
-    then ask for architecture (ie. 32-bit or 64-bit). Once this information is defined, build the
-    respective .swi and .swix file name strings.
-
-    Before you continue, ask "is this the correct version?: ie. EOS64-4.34.8M"
-    '''
-
+    username = input("Enter the user to access the switches: ")
+    password = enter_password() 
 
     #Specifies target EOS Version string to define image and extensions filename string
-    EOS_VERSION = input("Enter new EOS Version as a string (ie. EOS-4.34.4M): ")
-    print(f"The target EOS is {EOS_VERSION}")
-    EOS_IMAGE = f"{EOS_VERSION}.swi"
+    EOS_TARGET_VERSION = input("Enter new EOS Version as a string (ie. EOS-4.34.4M): ")
+    print(f"The target EOS is {EOS_TARGET_VERSION}")
 
     #Let's the user specify devices to update, collects management IPs
-    hostname_to_IP_dicionary = HostnamesAndIPs()
+    hostnames_and_ips = get_hostnames_and_ips()
     print("The following devices will be updated.")
-    printTargetedDevices(hostname_to_IP_dicionary)
+    print_targeted_devices(hostnames_and_ips)
 
     #Populates device list using IP values from hostname_and_IP dictionary
-    deviceList = []
-    for hostname, ip in hostname_to_IP_dicionary.items():
-        device = {
-            "device_type": "arista_eos",
-            "host" : hostname,
-            "ip": ip,
-            "username": user,
-            "password": password
-        }
-        
-        deviceList.append(Switch)
+    device_list = []
+    for hostname, ip in hostnames_and_ips.items():
+        device_list.append(Switch("arista_eos", hostname, ip, username, password))
 
-    httpServerIP = getHTTPServerIP()
+    # Define the http server IP to transfer files from
+    http_server_ip = get_http_server_ip()
 
     #Helps define NDR extension filename as a string if True
-    installNDRExtension = installNDROption();
-    if installNDRExtension:
-        EXTENSION_NDR = f"{EOS_VERSION}-NDRSensor.swix"
-        print(f"{EXTENSION_NDR} will be installed after EOS is upgraded.")
+    install_ndr_extension = install_ndr_option()
+    if install_ndr_extension:
+        print(f"The NDR extension will be installed on the switches after EOS is upgraded.")
 
-
-    # COMMAND EXECUTION
+    # INSTANTIATE UpgradeManager
+    upgrade_manager = UpgradeManager(device_list, http_server_ip, EOS_TARGET_VERSION, install_ndr_extension)
     
+    # COMMAND EXECUTION
     #Copy EOS file to flash
     print("\n===== COPYING EOS FILE FROM HTTP SERVER TO SWITCHES... ===== ")
+    upgrade_manager.concurrent_executor(upgrade_manager.copy_eos_to_flash)
+    
     concurrentExecutor(
         copyFiletoFlash,
         deviceList,
@@ -88,7 +76,7 @@ def main():
     concurrentExecutor(
         verifySHA512,
         deviceList,
-        fileName=EOS_IMAGE,
+        fileName=dev.EOS_IMAGE,
     )
 
     # Copy respective NDR extension to switches and verify sha512

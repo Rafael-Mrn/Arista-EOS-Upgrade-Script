@@ -3,45 +3,42 @@
    ask to install NDR?
 '''
 
-from netmiko import ConnectHandler
 import getpass
-from datetime import datetime
-from netmiko import ReadTimeout
 
-def enterPassword():
+def enter_password() -> str:
     #Defines user password at runtime
     password = getpass.getpass("Enter the password to access the switches: ")
     return password
 
-def HostnamesAndIPs():
+def get_hostnames_and_ips() -> dict:
     #Creates a dictionary with key hostname and value managament IP address from user input
-    hostname_and_IP = {}
+    hostnames_and_ips = {}
     devicesTargeted = int(input("Enter the number of devices that will be targeted: "))
     print("Please enter the switch hostnames along with their management IP...")
 
     for i in range(devicesTargeted):
         hostname = input(f"[{i+1}] Hostname: ")
-        managementIP = input(f"[{i+1}] {hostname}'s management IP: ")
-        hostname_and_IP[hostname] = managementIP
+        management_ip = input(f"[{i+1}] {hostname}'s management IP: ")
+        hostnames_and_ips[hostname] = management_ip
 
-    return hostname_and_IP
+    return hostnames_and_ips
 
-def printTargetedDevices(targetedDevices: dict):
-    for hostname, ip in targetedDevices.items():
-        print(f"{hostname} ({ip})\n")
+def print_targeted_devices(hostnames_and_ips: dict):
+    for hostname, ip in hostnames_and_ips.items():
+        print(f"{hostname} ({ip})")
 
-def getHTTPServerIP():
+def get_http_server_ip() -> str:
     #Specifies the HTTP Server IP used to download EOS files, ENTER uses default IP
-    httpServerIP = input("Specify HTTP Server Address [default 192.168.0.6]: ")
-    if (httpServerIP == ""):
-        httpServerIP = "192.168.0.6"
+    http_server_ip = input("Specify HTTP Server Address [default 192.168.0.6]: ")
+    if (http_server_ip == ""):
+        http_server_ip = "192.168.0.6"
         print("Using default HTTP Server IP 192.168.0.6...")
-    return httpServerIP
+    return http_server_ip
 
 #If true, NDR extension will be installed after EOS installation
-def installNDROption():
+def install_ndr_option() -> bool:
     option = False
-    userInput = input("Do you wish to install the respective NDR Extension? [y/N]: ")
-    if (userInput == "y"):
+    user_input = input("Do you wish to install the respective NDR Extension? [y/N]: ")
+    if (user_input == "y"):
         option = True
     return option
