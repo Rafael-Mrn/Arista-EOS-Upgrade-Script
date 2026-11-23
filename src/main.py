@@ -8,7 +8,7 @@
 from initialize import (
     enterPassword,
     HostnamesAndIPs,
-    printTargetedDevices,
+    printDeviceList,
     getHTTPServerIP,
     installNDROption
 )
@@ -48,20 +48,19 @@ def main():
     #Let's the user specify devices to update, collects management IPs
     hostname_to_IP_dicionary = HostnamesAndIPs()
     print("The following devices will be updated.")
-    printTargetedDevices(hostname_to_IP_dicionary)
+    printDeviceList(hostname_to_IP_dicionary)
 
     #Populates device list using IP values from hostname_and_IP dictionary
     deviceList = []
-    for hostname, ip in hostname_to_IP_dicionary.items():
+    for host, ip in hostname_to_IP_dicionary.items():
         device = {
             "device_type": "arista_eos",
-            "host" : hostname,
+            "host" : host,
             "ip": ip,
             "username": user,
             "password": password
         }
-        
-        deviceList.append(Switch)
+        deviceList.append(device)
 
     httpServerIP = getHTTPServerIP()
 
