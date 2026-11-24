@@ -62,9 +62,9 @@ def main():
     # COMMAND EXECUTION
     #Copy EOS file to flash
     print("\n===== COPYING EOS FILE FROM HTTP SERVER TO SWITCHES... ===== ")
-    upgrade_manager.concurrent_executor(upgrade_manager.copy_eos_to_flash)
+    upgrade_manager.concurrent_executor(upgrade_manager.copy_eos_to_flash())
     
-    concurrentExecutor(
+    """ concurrentExecutor(
         copyFiletoFlash,
         deviceList,
         fileName=EOS_IMAGE,
@@ -136,7 +136,7 @@ def main():
             deviceList,
             ndrExtension=EXTENSION_NDR
         )
-    
+     """
     
         
 

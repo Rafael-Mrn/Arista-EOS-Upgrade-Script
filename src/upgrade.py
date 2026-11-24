@@ -16,23 +16,26 @@ class UpgradeManager:
     http_server_ip: str
     target_version: str
     install_ndr_extension: bool
+    max_workers: int
 
-    def __init__(self, devices: list, http_server_ip: str, target_version: str, install_ndr_extension: bool):
+    def __init__(self, devices: list[Switch], http_server_ip: str, target_version: str, install_ndr_extension: bool):
         self.devices = devices
         self.http_server_ip = http_server_ip
         self.target_version = target_version
         self.install_ndr_extension = install_ndr_extension
+        self.max_workers = 15
         
 
-    def concurrent_executor(self, executeCommand, *args, **kwargs): #THIS WILL BE CALLED BY main.py
+    def concurrent_executor(self, execute_command, *args, **kwargs): #THIS WILL BE CALLED BY main.py
         if not self.devices:
             return
 
-        max_threads = len(self.devices)
+        # Should never be over 15 to prevent HTTP server bottlenecks
+        max_threads = min(len(self.devices), self.max_workers)
 
         with ThreadPoolExecutor(max_workers=max_threads) as executor:
             futures = [
-                executor.submit(executeCommand, device=dev, *args, **kwargs)
+                executor.submit(execute_command, device=dev, *args, **kwargs)
                 for dev in self.devices
             ]
 
