@@ -15,16 +15,6 @@ from initialize import (
 
 from switch import Switch
 
-from upgrade import(
-    concurrentExecutor,
-    copyFiletoFlash,
-    verifySHA512,
-    changeBootConfig,
-    reload,
-    forceConnect,
-    installNDR
-)
-
 from upgrade import UpgradeManager
 
 import time
@@ -35,7 +25,7 @@ def main():
     password = enter_password() 
 
     #Specifies target EOS Version string to define image and extensions filename string
-    EOS_TARGET_VERSION = input("Enter new EOS Version as a string (ie. EOS-4.34.4M): ")
+    EOS_TARGET_VERSION = input("Enter new EOS Version as a string (ie. 4.34.4M): ")
     print(f"The target EOS is {EOS_TARGET_VERSION}")
 
     #Let's the user specify devices to update, collects management IPs
@@ -60,25 +50,16 @@ def main():
     upgrade_manager = UpgradeManager(device_list, http_server_ip, EOS_TARGET_VERSION, install_ndr_extension)
     
     # COMMAND EXECUTION
+    """
     #Copy EOS file to flash
-    print("\n===== COPYING EOS FILE FROM HTTP SERVER TO SWITCHES... ===== ")
-    upgrade_manager.concurrent_executor(upgrade_manager.copy_eos_to_flash())
-    
-    """ concurrentExecutor(
-        copyFiletoFlash,
-        deviceList,
-        fileName=EOS_IMAGE,
-        httpServerIP=httpServerIP,
-    )
-    
+    print("\n===== COPYING FILES FROM HTTP SERVER TO SWITCHES... ===== ")
+    upgrade_manager.concurrent_executor(upgrade_manager.copy_eos_to_flash)
+    """
     # Verify sha512 of eos image copied to flash
-    print(f"\n===== VERIFYING SHA512 FOR {EOS_IMAGE} ON SWITCHES... ===== ")
-    concurrentExecutor(
-        verifySHA512,
-        deviceList,
-        fileName=dev.EOS_IMAGE,
-    )
+    print(f"\n===== VERIFYING SHA512 FOR COPIED FILES ON SWITCHES... ===== ")
+    upgrade_manager.concurrent_executor(upgrade_manager.verify_eos_sha512)
 
+    """
     # Copy respective NDR extension to switches and verify sha512
     if installNDRExtension:
         print("\n===== COPYING NDR EXTENSION FROM HTTP SERVER TO SWITCHES... =====")

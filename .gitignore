@@ -221,3 +221,4 @@ __marimo__/
 useful-logs.txt
 notes.md
 .vscode/
+src/netmiko_device_logs

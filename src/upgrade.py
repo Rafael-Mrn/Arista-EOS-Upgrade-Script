@@ -9,6 +9,7 @@ from netmiko import NetmikoAuthenticationException, NetmikoTimeoutException
 from switch import Switch
 import json
 import time
+import re
 
 
 class UpgradeManager:
@@ -42,19 +43,19 @@ class UpgradeManager:
             for future in as_completed(futures):
                 print(future.result())
     
-    def copy_eos_to_flash(self, device: Switch):
+    def copy_eos_to_flash(self, device: Switch) -> str:
         #Copies EOS file from http server to flash
         EOS_IMAGE = f"EOS{device.architecture}-{self.target_version}.swi"
         command_install_eos_image = f"copy http://{self.http_server_ip}:8000/{EOS_IMAGE} flash:/{EOS_IMAGE}"
 
         if self.install_ndr_extension: 
-            NDR_EXTENSION = f"EOS{self.architecture}-{self.target_version}-NDRSensor.swix"
+            NDR_EXTENSION = f"EOS{device.architecture}-{self.target_version}-NDRSensor.swix"
             command_install_ndr_extension = f"copy http://{self.http_server_ip}:8000/{NDR_EXTENSION} flash:/{NDR_EXTENSION}"
         
         try:
             with ConnectHandler(**device.connection_parameters) as connection:
                 connection.enable()                    
-                
+                connection.read_channel()
                 install_eos_output = connection.send_command(command_install_eos_image, expect_string="Copy completed successfully.", read_timeout=600)
                 if ("404 File not found" in install_eos_output):
                     raise ValueError(f"{EOS_IMAGE} not found on the HTTP server! Copy could not be completed.\nPlease run the script again with the correct target version or add the missing file to the HTTP server.")
@@ -74,7 +75,7 @@ class UpgradeManager:
         except (ValueError, NetmikoTimeoutException) as e:
             return f"\n[ERROR] Copy on {device.hostname} (IP: {device.ip}) failed!: {e}"
      
-    def verify_eos_sha512(self, device: Switch):
+    def verify_eos_sha512(self, device: Switch) -> str:
         file = open("eos_sha512_list.json", "r")
         eosHashes_json = file.read()
         eosHashes_dict = json.loads(eosHashes_json)
@@ -91,16 +92,25 @@ class UpgradeManager:
         try:
             # Get the hash for the file(s)
             eos_image_hash = eosHashes_dict["EOS_images"][EOS_IMAGE]
-            if self.install_ndr_extension: ndr_extension_hash = eosHashes_dict["NDR_Extensions"][NDR_EXTENSION]
+            if self.install_ndr_extension: ndr_extension_hash = eosHashes_dict["NDR_extensions"][NDR_EXTENSION]
 
             with ConnectHandler(**device.connection_parameters) as connection:
                 connection.enable()
+                prompt = re.escape(connection.find_prompt())
+
+                verify_eos_image_hash_output = connection.send_command(command_verify_eos_image_hash, expect_string=rf"{eos_image_hash}|{prompt}", read_timeout=180)
+
+                if eos_image_hash not in verify_eos_image_hash_output:
+                    raise ValueError(f"Hash for {EOS_IMAGE} in the output of {device.hostname} didn't match the official hash. Please see session log for this device in 'netmiko_device_logs' folder for more information.")
                 
-                verify_eos_image_hash_output = connection.send_command(command_verify_eos_image_hash, expect_string=eos_image_hash, read_timeout=300)
                 message = f"\nVerified hash for {EOS_IMAGE} on {device.hostname} successfully.\n--- Output from {device.hostname} ---\n{verify_eos_image_hash_output}"
 
                 if self.install_ndr_extension:
-                    verify_ndr_extension_hash_output = connection.send_command(command_verify_ndr_extension_hash, expect_string=ndr_extension_hash, read_timeout=300)
+                    verify_ndr_extension_hash_output = connection.send_command(command_verify_ndr_extension_hash, expect_string=rf"{ndr_extension_hash}|{prompt}", read_timeout=300)
+                    
+                    if ndr_extension_hash not in verify_ndr_extension_hash_output:
+                        raise ValueError(f"Hash for {NDR_EXTENSION} in the output of {device.hostname} didn't match the official hash. Please see session log for this device in 'netmiko_device_logs' folder for more information.")
+                    
                     output = verify_eos_image_hash_output + '\n' + verify_ndr_extension_hash_output
                     message = f"\nVerified hash for {EOS_IMAGE} on {device.hostname} successfully.\n--- Output from {device.hostname} ---\n{output}"
                     
@@ -108,14 +118,14 @@ class UpgradeManager:
         except (NetmikoAuthenticationException) as e:
             return f"\n[ERROR] Failed to connect to {device.hostname} (IP: {device.ip}): {e}"
         except (NetmikoTimeoutException, KeyError) as e:
-            return f"\n[ERROR] Couldn't verify hash. (The file may not exist on switch flash or hash was incorrect, please reinstall the file. \nMore Information: {e}"
+            return f"\n[ERROR] Couldn't verify hash. The file may not exist on switch flash or hash was incorrect, please reinstall the file. \nMore Information: {e}"
         
     # Changes boot config to new EOS image and verifies output
-    def changeBootConfig(self, device: Switch):
+    def change_boot_config(self, device: Switch):
         EOS_IMAGE = f"EOS{device.architecture}-{self.target_version}.swi"
 
         try:
-            with ConnectHandler(**device.connection_paramaters) as connection:
+            with ConnectHandler(**device.connection_parameters) as connection:
                 connection.enable()
                 connection.config_mode()
 
@@ -178,7 +188,7 @@ class UpgradeManager:
         except (NetmikoAuthenticationException, NetmikoTimeoutException):
             print(f"Connection to {device.hostname} failed. Device is still reloading...Waiting 30 seconds before next attempt.")
             time.sleep(30)
-            self.force_connect(device.connection_parameters)
+            self.force_connect(device)
 
     def installNDR(self, device: Switch):
         NDR_EXTENSION = f"EOS{device.architecture}-{self.target_version}-NDRSensor.swix"
