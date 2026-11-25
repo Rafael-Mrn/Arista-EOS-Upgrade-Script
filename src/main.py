@@ -54,39 +54,17 @@ def main():
     #Copy EOS file to flash
     print("\n===== COPYING FILES FROM HTTP SERVER TO SWITCHES... ===== ")
     upgrade_manager.concurrent_executor(upgrade_manager.copy_eos_to_flash)
-    """
+    
     # Verify sha512 of eos image copied to flash
     print(f"\n===== VERIFYING SHA512 FOR COPIED FILES ON SWITCHES... ===== ")
     upgrade_manager.concurrent_executor(upgrade_manager.verify_eos_sha512)
-
     """
-    # Copy respective NDR extension to switches and verify sha512
-    if installNDRExtension:
-        print("\n===== COPYING NDR EXTENSION FROM HTTP SERVER TO SWITCHES... =====")
-        concurrentExecutor(
-                copyFiletoFlash,
-                deviceList,
-                fileName=EXTENSION_NDR,
-                httpServerIP=httpServerIP,
-            )
-        
-        print(f"\n===== VERIFYING SHA512 FOR {EXTENSION_NDR} ON SWITCHES... ===== ")
-        concurrentExecutor(
-                verifySHA512,
-                deviceList,
-                fileName=EXTENSION_NDR,
-            )
-    
-    
+
     # Change boot config to new eos image
     print("\n===== CHANGING BOOT CONFIG ON SWITCHES TO THE TARGET EOS IMAGE... =====")
-    concurrentExecutor(
-        changeBootConfig,
-        deviceList,
-        eosImage=EOS_IMAGE
-    )
+    upgrade_manager.concurrent_executor(upgrade_manager.change_boot_config)
 
-    
+    """
     print("\n===== RELOADING SWITCHES, THIS MAY TAKE A WHILE... =====")
     concurrentExecutor(
         reload,

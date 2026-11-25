@@ -55,15 +55,15 @@ class UpgradeManager:
         try:
             with ConnectHandler(**device.connection_parameters) as connection:
                 connection.enable()                    
-                connection.read_channel()
-                install_eos_output = connection.send_command(command_install_eos_image, expect_string="Copy completed successfully.", read_timeout=600)
+                prompt = re.escape(connection.find_prompt())
+                install_eos_output = connection.send_command(command_install_eos_image, expect_string=rf"Copy completed successfully|{prompt}", read_timeout=600)
                 if ("404 File not found" in install_eos_output):
                     raise ValueError(f"{EOS_IMAGE} not found on the HTTP server! Copy could not be completed.\nPlease run the script again with the correct target version or add the missing file to the HTTP server.")
 
                 message = f"Copied {EOS_IMAGE} to {device.hostname} successfully!\n--- Output from {device.hostname} ---\n{install_eos_output}"
                 
                 if self.install_ndr_extension:
-                    install_ndr_output = connection.send_command(command_install_ndr_extension, expect_string="Copy completed successfully.", read_timeout=600)
+                    install_ndr_output = connection.send_command(command_install_ndr_extension, expect_string=rf"Copy completed successfully|{prompt}", read_timeout=600)
                     if ("404 File not found" in install_ndr_output):
                         raise ValueError(f"{NDR_EXTENSION} not found on the HTTP server! Copy could not be completed.\nPlease run the script again with the correct target version or add the missing file to the HTTP server.")
                     output = install_eos_output + '\n' + install_ndr_output
@@ -128,15 +128,24 @@ class UpgradeManager:
             with ConnectHandler(**device.connection_parameters) as connection:
                 connection.enable()
                 connection.config_mode()
+                prompt = re.escape(connection.find_prompt())
 
-                output = connection.send_command(f"boot system flash:{EOS_IMAGE}", read_timeout=300, strip_command=False, strip_prompt=False)
-                output += '\n' + connection.send_command("show boot-config", expect_string=EOS_IMAGE, read_timeout=30)
-                output += '\n' + connection.send_command("write memory", expect_string = "Copy completed successfully", read_timeout = 30)
+                boot_system_flash_output = connection.send_command(f"boot system flash:{EOS_IMAGE}", read_timeout=300, strip_command=False, strip_prompt=False)
+                if (r"% Error" or "[Errno]") in boot_system_flash_output:
+                    raise ValueError(f"Command 'boot system flash:{EOS_IMAGE}' failed. See error output from {device.hostname}:\n{boot_system_flash_output}\nPlease see session log for this device in 'netmiko_device_logs' folder for more information.")
+                
+                show_boot_config_output = connection.send_command("show boot-config", expect_string=rf"{EOS_IMAGE}|{prompt}", read_timeout=30)
+                if EOS_IMAGE not in show_boot_config_output:
+                    raise ValueError(f"Command 'show boot-conifg' didn't have '{EOS_IMAGE}'. Please see session log for this device in 'netmiko_device_logs' folder for more information.")
+                
+                write_memory_output = '\n' + connection.send_command("write memory", expect_string = "Copy completed successfully", read_timeout = 30)
+
+                output = boot_system_flash_output + '\n' + show_boot_config_output + '\n' + write_memory_output
 
                 return f"\nChanged boot config and saved to startup-config on {device.hostname} successfully!\n--- Output from {device.hostname} ---\n{output}"
         except (NetmikoAuthenticationException) as e:
             return f"\n[ERROR] Failed to connect to {device.hostname} (IP: {device.ip}): {e}"
-        except (NetmikoTimeoutException) as e:
+        except (NetmikoTimeoutException, ValueError) as e:
             return f"\n[ERROR] Change boot config failed on device {device.hostname} (IP: {device.ip})!\n{e}"
 
     def reload(self, device: Switch):
