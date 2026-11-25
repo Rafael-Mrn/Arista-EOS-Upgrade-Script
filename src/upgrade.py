@@ -150,18 +150,21 @@ class UpgradeManager:
 
     def reload(self, device: Switch):
         hostname = device.hostname
+
         try:
             with ConnectHandler(**device.connection_parameters) as connection:
                 connection.enable()
+                prompt = re.escape(connection.find_prompt())
 
                 # Save running-config everytime before reload
                 output = connection.send_command("write memory")
                 print(f"Preparing reload...saved running-config to startup-config on {hostname}")
 
                 print("Sending reload command...")
-                output += connection.send_command("reload", expect_string="confirm", read_timeout=300)
-                print(f"Output after reload command:\n{output}")
-
+                reload_command_output += connection.send_command("reload", expect_string=rf"confirm|{prompt}", read_timeout=300)
+                if "Proceed with reload? [confirm]" not in reload_command_output:
+                    raise ValueError(f"Device didn't request to confirm reload. See device error output:\n{reload_command_output}")
+                
                 # Confirm reload
                 print(f"Confirming reload on {hostname}...")
                 connection.write_channel("\r\n")
@@ -174,7 +177,7 @@ class UpgradeManager:
 
                 # Confirm Reboot happened
                 print(reloadOutput)
-                if ("The system is going down for reboot NOW!" not in reloadOutput):
+                if r"The system is going down for reboot NOW!" not in reloadOutput:
                     raise RuntimeError(f"Reload on {hostname} failed! Output: {reloadOutput!r}")
 
                 # Gracefully disconnect from ip to avoid exception, return success message
@@ -184,8 +187,8 @@ class UpgradeManager:
             
         except (NetmikoAuthenticationException) as e:
             return f"\n[ERROR] Failed to connect to {device.hostname} (IP: {device.ip}): {e}"
-        except (NetmikoTimeoutException) as e:
-            return f"\n[ERROR] Reload on {device.hostname} (IP: {device.ip}) failed!: {e}\nSee output on {device.hostname}\n{output}"
+        except (NetmikoTimeoutException, ValueError) as e:
+            return f"\n[ERROR] Reload on {device.hostname} (IP: {device.ip}) failed!: {e}\nSee output on {device.hostname}\n{output}\nMore Information:\n{e}"
 
     # Add Max Attempts, then use for loop?
     def force_connect(self, device: Switch):

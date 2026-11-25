@@ -22,4 +22,9 @@ def test_change_boot_config():
     print("====== TESTING change_boot_config() ======")
     upgrade_manager.concurrent_executor(upgrade_manager.change_boot_config)
 
-test_change_boot_config()
+def test_reload():
+    print("====== TESTING reload() ======")
+    upgrade_manager.concurrent_executor(upgrade_manager.reload)
+
+#test_change_boot_config()
+test_reload()

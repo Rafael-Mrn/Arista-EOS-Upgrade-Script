@@ -58,7 +58,7 @@ def main():
     # Verify sha512 of eos image copied to flash
     print(f"\n===== VERIFYING SHA512 FOR COPIED FILES ON SWITCHES... ===== ")
     upgrade_manager.concurrent_executor(upgrade_manager.verify_eos_sha512)
-    """
+    
 
     # Change boot config to new eos image
     print("\n===== CHANGING BOOT CONFIG ON SWITCHES TO THE TARGET EOS IMAGE... =====")
@@ -66,11 +66,9 @@ def main():
 
     """
     print("\n===== RELOADING SWITCHES, THIS MAY TAKE A WHILE... =====")
-    concurrentExecutor(
-        reload,
-        deviceList
-    )
-
+    upgrade_manager.concurrent_executor(upgrade_manager.reload)
+    
+    """
     # Give time for devices to reboot
     print("\n===== WAITING FOR DEVICES TO REBOOT, PLEASE ALLOW A FEW MINUTES... =====")
     # Shorter sleep time for 64-bit devices since they reboot faster
