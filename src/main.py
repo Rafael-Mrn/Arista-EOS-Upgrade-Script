@@ -13,17 +13,13 @@ from initialize import (
     install_ndr_option
 )
 
-from switch import Switch
+from .switch import Switch
 
-from upgrade import UpgradeManager
+from .upgrade import UpgradeManager
 
 import time
 
 def main():
-    #Defines user password at runtime
-    username = input("Enter the user to access the switches: ")
-    password = enter_password() 
-
     #Specifies target EOS Version string to define image and extensions filename string
     EOS_TARGET_VERSION = input("Enter new EOS Version as a string (ie. 4.34.4M): ")
     print(f"The target EOS is {EOS_TARGET_VERSION}")
@@ -32,12 +28,16 @@ def main():
     hostnames_and_ips = get_hostnames_and_ips()
     print("The following devices will be updated.")
     print_targeted_devices(hostnames_and_ips)
+    
+    #Defines user password at runtime
+    username = input("Enter the user to access the switches: ")
+    password = enter_password() 
 
     #Populates device list using IP values from hostname_and_IP dictionary
     device_list = []
     for hostname, ip in hostnames_and_ips.items():
         device_list.append(Switch("arista_eos", hostname, ip, username, password))
-
+    
     # Define the http server IP to transfer files from
     http_server_ip = get_http_server_ip()
 

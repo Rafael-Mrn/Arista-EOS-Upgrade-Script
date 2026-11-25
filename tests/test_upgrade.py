@@ -1,32 +1,25 @@
 import os
-from src.upgrade import copyFiletoFlash, ConnectHandler
-from netmiko import NetmikoAuthenticationException, NetmikoTimeoutException
+from src.switch import Switch
+from src.upgrade import UpgradeManager
 
-password = os.getenv("SWITCH_PASS")  ##Remove password for testing??
+import getpass
 
-def device():
-    exampleDevice = {
-        "device_type": "arista_eos",
-        "host": "192.168.0.7",
-        "username": "admin",
-        "password": password
-    }
+username = input("Enter the user to access the switches: ")
+password = getpass.getpass("Enter the password to access the switches: ")
 
-    return exampleDevice
+device_list = [
+    Switch("arista_eos", "switch-1", "192.168.0.16", username, password),
+    Switch("arista_eos", "ASO04-BWT-CMBuilding-B", "192.168.0.18", username, password),
+]
 
-def execute_command(command, device):
-    """Worker function to connect to a single device and send commands."""
-    host = device["host"]
-    try:
-        with ConnectHandler(**device) as connection:
-            connection.enable()
-            output = connection.send_command(command)
-            return f"=== Output from {host} ===\n{output}"
-    except (NetmikoTimeoutException, NetmikoAuthenticationException) as error:
-        return f"[Error] Failed to connect to {host}: {error}"
+EOS_TARGET_VERSION = "4.34.8M"
+http_server_ip = "192.168.0.6"
+install_ndr_extension = True
 
-def test_copyEOStoFlash():
-    copyFiletoFlashOutput = copyFiletoFlash("test.txt", "192.168.0.6", device())
-    flash = execute_command("dir flash:", device())
-    
-    assert "test.txt" in flash
+upgrade_manager = UpgradeManager(device_list, http_server_ip, EOS_TARGET_VERSION, install_ndr_extension)
+
+def test_change_boot_config():
+    print("====== TESTING change_boot_config() ======")
+    upgrade_manager.concurrent_executor(upgrade_manager.change_boot_config)
+
+test_change_boot_config()

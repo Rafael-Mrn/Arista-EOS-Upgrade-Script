@@ -6,7 +6,7 @@ extension to boot-extensions for boot persistance))
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from netmiko import ConnectHandler
 from netmiko import NetmikoAuthenticationException, NetmikoTimeoutException
-from switch import Switch
+from .switch import Switch
 import json
 import time
 import re
