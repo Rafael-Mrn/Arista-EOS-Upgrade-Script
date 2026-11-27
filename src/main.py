@@ -68,23 +68,16 @@ def main():
     print("\n===== RELOADING SWITCHES, THIS MAY TAKE A WHILE... =====")
     upgrade_manager.concurrent_executor(upgrade_manager.reload)
     
-    """
+    
     # Give time for devices to reboot
     print("\n===== WAITING FOR DEVICES TO REBOOT, PLEASE ALLOW A FEW MINUTES... =====")
-    # Shorter sleep time for 64-bit devices since they reboot faster
-    if ("EOS64" in EOS_VERSION):
-        print("\nTime to wait: 4 minutes")
-        time.sleep(240)
-    else:
-        print("\nTime to wait: 8 minutes")
-        time.sleep(480)
+    upgrade_manager.concurrent_executor(upgrade_manager.put_threads_to_sleep_before_force_connect)
+
     
     print("\n===== TRYING TO RECONNECT AFTER REBOOT... =====")
-    concurrentExecutor(
-        forceConnect,
-        deviceList
-    )
-    
+    upgrade_manager.concurrent_executor(upgrade_manager.force_connect)
+
+    """
     if installNDRExtension:
         # Install NDR Extension
         print("\n===== INSTALLING NDR EXTENSION ON ALL SWITCHES... =====")

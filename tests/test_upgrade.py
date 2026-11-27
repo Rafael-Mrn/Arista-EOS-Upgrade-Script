@@ -26,7 +26,19 @@ def test_reload():
     print("====== TESTING reload() ======")
     upgrade_manager.concurrent_executor(upgrade_manager.reload)
 
+def test_put_threads_to_sleep_before_force_connect():
+    print("====== TESTING test_put_threads_to_sleep_before_force_connect() ======")
+    upgrade_manager.concurrent_executor(upgrade_manager.put_threads_to_sleep_before_force_connect)
+
+def test_force_connect():
+    print("====== TESTING force_connect() ======")
+    upgrade_manager.concurrent_executor(upgrade_manager.force_connect)
+
+
+
 #test_change_boot_config()
 test_reload()
+test_put_threads_to_sleep_before_force_connect()
+test_force_connect()
 
 #run using command 'python -m tests.test_upgrade'

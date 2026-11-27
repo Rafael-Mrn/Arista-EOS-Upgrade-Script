@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from netmiko import ConnectHandler
 from netmiko import NetmikoAuthenticationException, NetmikoTimeoutException
 from .switch import Switch
+import socket
 import json
 import time
 import re
@@ -58,21 +59,21 @@ class UpgradeManager:
                 prompt = re.escape(connection.find_prompt())
                 install_eos_output = connection.send_command(command_install_eos_image, expect_string=rf"Copy completed successfully|{prompt}", read_timeout=600)
                 if ("404 File not found" in install_eos_output):
-                    raise ValueError(f"{EOS_IMAGE} not found on the HTTP server! Copy could not be completed.\nPlease run the script again with the correct target version or add the missing file to the HTTP server.")
+                    raise RuntimeError(f"{EOS_IMAGE} not found on the HTTP server! Copy could not be completed.\nPlease run the script again with the correct target version or add the missing file to the HTTP server.")
 
                 message = f"Copied {EOS_IMAGE} to {device.hostname} successfully!\n--- Output from {device.hostname} ---\n{install_eos_output}"
                 
                 if self.install_ndr_extension:
                     install_ndr_output = connection.send_command(command_install_ndr_extension, expect_string=rf"Copy completed successfully|{prompt}", read_timeout=600)
                     if ("404 File not found" in install_ndr_output):
-                        raise ValueError(f"{NDR_EXTENSION} not found on the HTTP server! Copy could not be completed.\nPlease run the script again with the correct target version or add the missing file to the HTTP server.")
+                        raise RuntimeError(f"{NDR_EXTENSION} not found on the HTTP server! Copy could not be completed.\nPlease run the script again with the correct target version or add the missing file to the HTTP server.")
                     output = install_eos_output + '\n' + install_ndr_output
                     message = f"Copied {EOS_IMAGE} and {NDR_EXTENSION} to {device.hostname} successfully!\n--- Output from {device.hostname} ---\n{output}"
 
                 return message
         except (NetmikoAuthenticationException) as e:
             return f"\n[ERROR] Failed to connect to {device.hostname} (IP: {device.ip}): {e}"
-        except (ValueError, NetmikoTimeoutException) as e:
+        except (RuntimeError, NetmikoTimeoutException) as e:
             return f"\n[ERROR] Copy on {device.hostname} (IP: {device.ip}) failed!: {e}"
      
     def verify_eos_sha512(self, device: Switch) -> str:
@@ -101,7 +102,7 @@ class UpgradeManager:
                 verify_eos_image_hash_output = connection.send_command(command_verify_eos_image_hash, expect_string=rf"{eos_image_hash}|{prompt}", read_timeout=180)
 
                 if eos_image_hash not in verify_eos_image_hash_output:
-                    raise ValueError(f"Hash for {EOS_IMAGE} in the output of {device.hostname} didn't match the official hash. Please see session log for this device in 'netmiko_device_logs' folder for more information.")
+                    raise RuntimeError(f"Hash for {EOS_IMAGE} in the output of {device.hostname} didn't match the official hash. Please see session log for this device in 'netmiko_device_logs' folder for more information.")
                 
                 message = f"\nVerified hash for {EOS_IMAGE} on {device.hostname} successfully.\n--- Output from {device.hostname} ---\n{verify_eos_image_hash_output}"
 
@@ -109,7 +110,7 @@ class UpgradeManager:
                     verify_ndr_extension_hash_output = connection.send_command(command_verify_ndr_extension_hash, expect_string=rf"{ndr_extension_hash}|{prompt}", read_timeout=300)
                     
                     if ndr_extension_hash not in verify_ndr_extension_hash_output:
-                        raise ValueError(f"Hash for {NDR_EXTENSION} in the output of {device.hostname} didn't match the official hash. Please see session log for this device in 'netmiko_device_logs' folder for more information.")
+                        raise RuntimeError(f"Hash for {NDR_EXTENSION} in the output of {device.hostname} didn't match the official hash. Please see session log for this device in 'netmiko_device_logs' folder for more information.")
                     
                     output = verify_eos_image_hash_output + '\n' + verify_ndr_extension_hash_output
                     message = f"\nVerified hash for {EOS_IMAGE} on {device.hostname} successfully.\n--- Output from {device.hostname} ---\n{output}"
@@ -117,7 +118,7 @@ class UpgradeManager:
                 return message
         except (NetmikoAuthenticationException) as e:
             return f"\n[ERROR] Failed to connect to {device.hostname} (IP: {device.ip}): {e}"
-        except (NetmikoTimeoutException, KeyError) as e:
+        except (NetmikoTimeoutException, KeyError, RuntimeError) as e:
             return f"\n[ERROR] Couldn't verify hash. The file may not exist on switch flash or hash was incorrect, please reinstall the file. \nMore Information: {e}"
         
     # Changes boot config to new EOS image and verifies output
@@ -132,11 +133,11 @@ class UpgradeManager:
 
                 boot_system_flash_output = connection.send_command(f"boot system flash:{EOS_IMAGE}", read_timeout=300, strip_command=False, strip_prompt=False)
                 if (r"% Error" or "[Errno]") in boot_system_flash_output:
-                    raise ValueError(f"Command 'boot system flash:{EOS_IMAGE}' failed. See error output from {device.hostname}:\n{boot_system_flash_output}\nPlease see session log for this device in 'netmiko_device_logs' folder for more information.")
+                    raise RuntimeError(f"Command 'boot system flash:{EOS_IMAGE}' failed. See error output from {device.hostname}:\n{boot_system_flash_output}\nPlease see session log for this device in 'netmiko_device_logs' folder for more information.")
                 
                 show_boot_config_output = connection.send_command("show boot-config", expect_string=rf"{EOS_IMAGE}|{prompt}", read_timeout=30)
                 if EOS_IMAGE not in show_boot_config_output:
-                    raise ValueError(f"Command 'show boot-conifg' didn't have '{EOS_IMAGE}'. Please see session log for this device in 'netmiko_device_logs' folder for more information.")
+                    raise RuntimeError(f"Command 'show boot-conifg' didn't have '{EOS_IMAGE}'. Please see session log for this device in 'netmiko_device_logs' folder for more information.")
                 
                 write_memory_output = '\n' + connection.send_command("write memory", expect_string = "Copy completed successfully", read_timeout = 30)
 
@@ -145,7 +146,7 @@ class UpgradeManager:
                 return f"\nChanged boot config and saved to startup-config on {device.hostname} successfully!\n--- Output from {device.hostname} ---\n{output}"
         except (NetmikoAuthenticationException) as e:
             return f"\n[ERROR] Failed to connect to {device.hostname} (IP: {device.ip}): {e}"
-        except (NetmikoTimeoutException, ValueError) as e:
+        except (NetmikoTimeoutException, RuntimeError) as e:
             return f"\n[ERROR] Change boot config failed on device {device.hostname} (IP: {device.ip})!\n{e}"
 
     def reload(self, device: Switch):
@@ -163,7 +164,7 @@ class UpgradeManager:
                 print("Sending reload command...")
                 reload_command_output = connection.send_command("reload", expect_string=rf"confirm|{prompt}", read_timeout=300)
                 if "Proceed with reload? [confirm]" not in reload_command_output:
-                    raise ValueError(f"Device didn't request to confirm reload. See device error output:\n{reload_command_output}")
+                    raise RuntimeError(f"Device didn't request to confirm reload. See device error output:\n{reload_command_output}")
                 
                 # Confirm reload
                 print(f"Confirming reload on {hostname}...")
@@ -188,20 +189,32 @@ class UpgradeManager:
             
         except (NetmikoAuthenticationException) as e:
             return f"\n[ERROR] Failed to connect to {device.hostname} (IP: {device.ip}): {e}"
-        except (NetmikoTimeoutException, ValueError) as e:
+        except (NetmikoTimeoutException, RuntimeError) as e:
             return f"\n[ERROR] Reload on {device.hostname} (IP: {device.ip}) failed!: {e}\nSee output on {device.hostname}\n{output}\nMore Information:\n{e}"
 
+    def put_threads_to_sleep_before_force_connect(self, device: Switch):
+        if ("64" in device.architecture):
+            print("\nTime to wait before attempting connection: 4 minutes")
+            time.sleep(240)
+        else:
+            print("\nTime to wait before attempting connection: 8 minutes")
+            time.sleep(480)
+    
     # Add Max Attempts, then use for loop?
-    def force_connect(self, device: Switch):
-        try:
-            with ConnectHandler(**device.connection_parameters) as connection:
-                print(f"\nAttempting connection to {device.hostname}...", flush=True)
-                connection.enable()
-                return f"\nConnected successfully, {device.hostname} is back up!"
-        except (NetmikoAuthenticationException, NetmikoTimeoutException):
-            print(f"Connection to {device.hostname} failed. Device is still reloading...Waiting 30 seconds before next attempt.")
-            time.sleep(30)
-            self.force_connect(device)
+    def force_connect(self, device: Switch) -> str:
+        max_attempts = 10
+        
+        for attempts in range(1, max_attempts + 1):
+            try:
+                print(f"\n[Attempt {attempts}] Attempting SSH connection to {device.hostname}...", flush=True)
+                with ConnectHandler(**device.connection_parameters) as connection:
+                    connection.enable()
+                    return f"\nConnected successfully, {device.hostname} is back up!"
+            except (NetmikoAuthenticationException, NetmikoTimeoutException):
+                print(f"Connection to {device.hostname} failed. Device is still reloading...Waiting 30 seconds before next attempt.")
+                if attempts != max_attempts: time.sleep(30)
+        raise RuntimeError(f"Reached maximum connection attempts for {device.hostname}. Reboot is taking longer than normal, please check device")     
+            
 
     def installNDR(self, device: Switch):
         NDR_EXTENSION = f"EOS{device.architecture}-{self.target_version}-NDRSensor.swix"
