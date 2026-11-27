@@ -28,3 +28,5 @@ def test_reload():
 
 #test_change_boot_config()
 test_reload()
+
+#run using command 'python -m tests.test_upgrade'

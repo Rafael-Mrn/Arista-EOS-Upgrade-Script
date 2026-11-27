@@ -157,11 +157,11 @@ class UpgradeManager:
                 prompt = re.escape(connection.find_prompt())
 
                 # Save running-config everytime before reload
-                output = connection.send_command("write memory")
+                write_memory_output = connection.send_command("write memory")
                 print(f"Preparing reload...saved running-config to startup-config on {hostname}")
 
                 print("Sending reload command...")
-                reload_command_output += connection.send_command("reload", expect_string=rf"confirm|{prompt}", read_timeout=300)
+                reload_command_output = connection.send_command("reload", expect_string=rf"confirm|{prompt}", read_timeout=300)
                 if "Proceed with reload? [confirm]" not in reload_command_output:
                     raise ValueError(f"Device didn't request to confirm reload. See device error output:\n{reload_command_output}")
                 
@@ -173,17 +173,18 @@ class UpgradeManager:
                 time.sleep(5)
 
                 # Disconnect from device
-                reloadOutput = connection.read_channel()
+                reload_message_output = connection.read_channel()
 
                 # Confirm Reboot happened
-                print(reloadOutput)
-                if r"The system is going down for reboot NOW!" not in reloadOutput:
-                    raise RuntimeError(f"Reload on {hostname} failed! Output: {reloadOutput!r}")
+                print(reload_message_output)
+                if r"The system is going down for reboot NOW!" not in reload_message_output:
+                    raise RuntimeError(f"Reload on {hostname} failed! Output: {reload_message_output!r}")
 
                 # Gracefully disconnect from ip to avoid exception, return success message
                 print(f"Disconnecting from {hostname}...")
                 connection.disconnect()
-                return f"Disconnected from {hostname}. Device is reloading..."
+                output = write_memory_output + '\n' + reload_command_output + '\n' + reload_message_output
+                return f"Disconnected from {hostname}. Device is reloading...See output:\n{output}"
             
         except (NetmikoAuthenticationException) as e:
             return f"\n[ERROR] Failed to connect to {device.hostname} (IP: {device.ip}): {e}"
